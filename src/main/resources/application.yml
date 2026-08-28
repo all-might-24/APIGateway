@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: APIGateway
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: product-service
+              uri: lb://ProductService
+              predicates:
+                - Path=/products/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/products
+                - name: Retry
+                  args:
+                    retries: 2
+                    statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+
+            - id: user-auth-service
+              uri: lb://UserAuthService
+              predicates:
+                - Path=/auth/**
+
+            - id: user-auth-service-users
+              uri: lb://UserAuthService
+              predicates:
+                - Path=/users/**
+
+            - id: user-auth-service-session
+              uri: lb://UserAuthService
+              predicates:
+                - Path=/session/**
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+jwt:
+  secret: ${JWT_SECRET}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      productServiceCircuitBreaker:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 2
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
