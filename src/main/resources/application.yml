@@ -35,7 +35,10 @@ spring:
               uri: lb://UserAuthService
               predicates:
                 - Path=/session/**
-
+            - id: order-service
+              uri: lb://OrderService
+              predicates:
+                - Path=/orders/**
 server:
   port: 8080
 
